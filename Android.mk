@@ -34,6 +34,7 @@ LOCAL_C_INCLUDES := \
 # 添加所有需要编译的 C/C++ 源文件
 LOCAL_SRC_FILES := \
     main.cpp \
+    pscan.cpp \
     chainer/ccformat.cpp \
 	chainer/ccscan.cpp \
 	utils/threadtool/threadpool.cpp \
@@ -43,7 +44,7 @@ LOCAL_SRC_FILES := \
 
 # 指定 C++ 标准为 C++17
 # 现代 C++ 特性（如模板、auto 等）需要此设置
-LOCAL_CPP_STANDARD := c++11
+LOCAL_CPP_STANDARD := c++17
 
 # 链接时需要的库
 # -lpthread 用于支持多线程 (pthreads)

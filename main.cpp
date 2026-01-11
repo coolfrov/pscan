@@ -1,10 +1,12 @@
-#include "ccformat.h"
-#include "ccscan.h"
+#include "pscan.h"
+#include "memextend.h"
 #include <iostream>
 
 int main()
 {
-    chainer::cscan<size_t> t; // 假定为64位 32位改uint32_t
+    // 创建PScan对象 (假定为64位, 32位改uint32_t)
+    // Create PScan object (assumes 64-bit, use uint32_t for 32-bit)
+    pscan::PScan<size_t> pscan_tool;
 
     memtool::base::target_pid = memtool::base::get_pid("com.LanPiaoPiao.PlantsVsZombiesRH");
     if (memtool::base::target_pid == -1)
@@ -18,21 +20,26 @@ int main()
 
     memtool::extend::set_mem_ranges(memtool::Anonymous + memtool::C_alloc + memtool::C_bss + memtool::C_data);
 
-    printf("%d\n", t.get_pointers(0, 0, false, 10, 1 << 20));
+    // 获取指针
+    // Get pointers
+    printf("%ld\n", pscan_tool.getPointers(0, 0, false, 10, 1 << 20));
 
+    // 设置目标地址
+    // Set target address
     std::vector<size_t> addr;
     addr.emplace_back(0x742F5DFD4C);
 
-    auto f = fopen("/data/local/tmp/pscan_tmp", "wb+");
-    printf("%ld\n", t.scan_pointer_chain(addr, 6, 2500, false, 0, f)); // x层 偏移n
-    fclose(f); // 现在已经结束了 后面的是格式化
+    // 扫描指针链并输出到文件 (深度6层, 偏移2500)
+    // Scan pointer chain and output to file (depth 6, offset 2500)
+    printf("%ld\n", pscan_tool.scanPointerChain(addr, 6, 2500, false, 0, "/data/local/tmp/pscan_tmp"));
 
-    /*chainer::cformat<size_t> t2;
-    auto f2 = fopen("1", "rb+");
-
-    printf("%ld\n", t2.format_bin_chain_data(f2, "2", 0)); // 文件
-    //  printf("%ld\n", t2.format_bin_chain_data(f2, "2", 1)); // 文件夹 需要在当前目录有2文件夹
-
-    fclose(f2);*/
+    // 格式化输出示例 (已注释)
+    // Format output example (commented out)
+    /*
+    pscan::PScan<size_t> pscan_format;
+    printf("%ld\n", pscan_format.formatOutputFile("1", "2")); // 读取文件1并输出到文件2
+    // printf("%ld\n", pscan_format.formatOutputFolder("1", "2")); // 读取文件1并输出到文件夹2
+    */
+    
     return 0;
 }
