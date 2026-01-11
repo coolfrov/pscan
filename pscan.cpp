@@ -26,7 +26,7 @@ template <class T>
 size_t pscan::PScan<T>::scanPointerChain(std::vector<T> &addr, int depth, size_t offset, 
                                          bool limit, size_t plim, const char *output_file)
 {
-    FILE *f = fopen(output_file, "wb+");
+    FILE *f = fopen(output_file, "wb");
     if (f == nullptr) {
         printf("Error: Cannot open output file %s\n", output_file);
         return 0;
