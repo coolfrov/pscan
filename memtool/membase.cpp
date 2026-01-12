@@ -1,6 +1,6 @@
 //
 // Create by 青杉白衣 on 2023
-// Wrapper implementation using new_memtool
+// Wrapper implementation (memTools3.2.8.hpp available in same directory)
 //
 
 #ifndef MEMTOOL_MEM_BASE
