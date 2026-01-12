@@ -1,6 +1,6 @@
 //
-// Create by 青杉白衣 on 2023
-// Wrapper for new_memtool - Base memory operations
+// Compatibility wrapper for memtool::base
+// Uses new memTools3.2.8.hpp (Mem namespace) internally
 //
 
 #pragma once
@@ -14,7 +14,7 @@
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <sys/uio.h>
-#include <sys/user.h> // for PAGE_SIZE
+#include <sys/user.h>
 #include <unistd.h>
 
 #include "memsetting.h"

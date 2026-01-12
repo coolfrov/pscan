@@ -1,6 +1,6 @@
 //
-// Create by 青杉白衣 on 2023
-// Wrapper for new_memtool
+// Compatibility wrapper for memtool namespace
+// Uses new memTools3.2.8.hpp (Mem namespace) internally
 //
 
 #pragma once
