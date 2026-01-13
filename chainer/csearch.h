@@ -36,6 +36,7 @@ private:
     void filter_pointer_to_block(P &&input, size_t offset, utils::list_head<pointer_pcount<T>> *node, size_t avg, std::atomic<size_t> &total);
 
 public:
+    size_t custom_get_pointers(T start, T end, bool rest, int count, int size);
     size_t get_pointers(T start, T end, bool rest, int count, int size);
 
     // template <typename P, template <typename> class Container> as what i say, clang has bug

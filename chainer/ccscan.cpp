@@ -32,6 +32,7 @@ size_t chainer::cscan<T>::scan_pointer_chain(std::vector<T> &addr, int depth, si
         std::vector<pointer_data<T> *> curr;
 
         printf("\ncurrent level: %d\n", level);
+        fflush(stdout);
 
         if (level > 0) {
             this->search_pointer(dirs[level - 1], curr, offset, limit, plim);
@@ -51,7 +52,7 @@ size_t chainer::cscan<T>::scan_pointer_chain(std::vector<T> &addr, int depth, si
         fidx = ranges.size();
         utils::free_container_data(curr); // why don't i put it outside the loop is because lazy and level < 0
     }
-
+    
     for (; fidx < ranges.size(); ++fidx)
         this->create_assoc_dir_index(dirs[ranges[fidx].level - 1], ranges[fidx].results, offset, 10000); // not 'associate_data_index' or not ranges[fidx].results.size() because i wanna run it by multi thread
 

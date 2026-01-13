@@ -5,10 +5,14 @@
 #pragma once
 
 #include "csearch.h"
+#include <iostream>
+#include "../../../memTools/jni/memTools3.2.8.hpp"
 
-static auto search_pointer_by_bin_gt = [](auto &&n, auto &&target) { return utils::address_of(n)->address < target; };
+static auto search_pointer_by_bin_gt = [](auto &&n, auto &&target)
+{ return utils::address_of(n)->address < target; };
 
-static auto get_pointer_by_bin_gt = [](auto &&vma, auto &&target) { return vma->end < target; };
+static auto get_pointer_by_bin_gt = [](auto &&vma, auto &&target)
+{ return vma->end < target; };
 
 template <class T>
 void chainer::search<T>::output_pointer_to_file(FILE *f, T *buffer, T start, size_t maxn, T min, T sub)
@@ -20,11 +24,12 @@ void chainer::search<T>::output_pointer_to_file(FILE *f, T *buffer, T start, siz
 
     auto &avec = memtool::extend::vm_area_vec;
     size = avec.size();
-
-    for (auto i = 0ul; i < maxn; ++i) {
+    std::cout << vMaps.size() << std::endl;
+    for (auto i = 0ul; i < maxn; ++i)
+    {
         value = (*(buffer + i)) & 0xffffffffffff; // u can & 0xffffffffffff ......
 
-        if ((value - min) > sub )
+        if ((value - min) > sub)
             continue;
 
         utils::binary_search(avec, get_pointer_by_bin_gt, value, size, lower, upper);
@@ -51,7 +56,8 @@ void chainer::search<T>::filter_pointer_to_fmmap(char *buffer, T start, size_t l
     max = memtool::extend::vm_area_vec.back()->end;
     sub = max - min;
 
-    if (memtool::extend::readv(start, buffer, len) == -1) {
+    if (memtool::extend::readv(start, buffer, len) == -1)
+    {
         fclose(f), f = nullptr;
         return;
     }
@@ -75,7 +81,8 @@ void chainer::search<T>::filter_pointer_to_fmmap_by_page(char *buffer, T start, 
     max = memtool::extend::vm_area_vec.back()->end;
     sub = max - min;
 
-    auto out_pointers = [this, &f, buffer, min, sub](auto s, auto z) {
+    auto out_pointers = [this, &f, buffer, min, sub](auto s, auto z)
+    {
         if (memtool::extend::readv(s, buffer, z) == -1)
             return;
 
@@ -105,7 +112,8 @@ void chainer::search<T>::filter_pointer_from_fmmap(P &&input, chainer::pointer_d
 
     pcount = 0;
     save = block->data.data;
-    for (auto i = 0ul; i < count; ++i) {
+    for (auto i = 0ul; i < count; ++i)
+    {
         data = start + i;
 
         value = data->value;
@@ -119,7 +127,6 @@ void chainer::search<T>::filter_pointer_from_fmmap(P &&input, chainer::pointer_d
 
         save[pcount++] = data;
     }
-
     total += pcount;
     block->data.count = pcount;
 }
@@ -132,13 +139,16 @@ void chainer::search<T>::filter_pointer_to_block(P &&input, size_t offset, utils
 
     auto &trf = reinterpret_cast<utils::mapqueue<pointer_data<T> *> &>(cache);
 
-    auto find_pointer = [this, &input, &total, offset](auto start, auto count, auto block) { filter_pointer_from_fmmap(input, start, count, offset, total, block); };
+    auto find_pointer = [this, &input, &total, offset](auto start, auto count, auto block)
+    {
+        filter_pointer_from_fmmap(input, start, count, offset, total, block);
+    };
 
-    auto push_pool = [&find_pointer, &start, &save, &node](auto t) {
+    auto push_pool = [&find_pointer, &start, &save, &node](auto t)
+    {
         node->next = new utils::list_head<pointer_pcount<T>>;
         node = node->next;
         node->data.data = save;
-
         utils::thread_pool->pushpool(find_pointer, start, t, node);
 
         start += t, save += t;
@@ -147,6 +157,115 @@ void chainer::search<T>::filter_pointer_to_block(P &&input, size_t offset, utils
     start = &pcoll.front();
     save = &trf.front();
     utils::split_num_to_avg(pcoll.size(), avg, push_pool);
+}
+
+
+// 使用自定义vMaps和内存读取函数的get_pointers函数
+template <class T>
+size_t chainer::search<T>::custom_get_pointers(T start, T end, bool rest, int count, int size)
+{
+    Mem::mem("com.LanPiaoPiao.PlantsVsZombiesRH");
+    if (!Mem::isRunning())
+    {
+        return 0;
+    }
+    Mem::SetMemRange(Mem::A | Mem::CD | Mem::CB | Mem::CA | Mem::JH);
+    if (vMaps.empty())
+    {
+        return 0;
+    }
+    FILE *f;
+    f = tmpfile();
+    if (f == nullptr)
+        return 0;
+    // 这里模拟原来的cat_file_list逻辑，但我们直接处理vMaps
+    const int BLOCK_ENTRY_NUM = 0x1000;              // 每次读取的64位值数量
+    const int BLOCK_READ_SIZE = BLOCK_ENTRY_NUM * 8; // 每次读取字节数
+    DWORD64 minAddr = vMaps.front().baddr;
+    DWORD64 maxAddr = vMaps.back().eaddr;
+    // 创建指针数据并保存
+    chainer::pointer_data<T> data;
+    data.address = 0;
+    data.value = 0;
+    // 静态块数据
+    memtool::extend::vm_static_list.clear();
+    // 动态内存
+    memtool::extend::vm_area_vec.clear();
+    for (const auto &map : vMaps)
+    {
+        std::string infor = map.infor.substr(map.infor.find_last_of("/") + 1);
+        if(infor.find("[anon:.bss]")!=-1 || infor.find(".so")!=-1){
+            auto mod = new memtool::vm_static_data(map.baddr, map.eaddr, 1);
+            strcpy(mod->name, infor.c_str());
+            memtool::extend::vm_static_list.emplace_back(mod);
+        }else{
+            auto mod = new memtool::vm_area_data;
+            mod->start = map.baddr;
+            mod->end = map.eaddr;
+            strcpy(mod->name, infor.c_str());
+            memtool::extend::vm_area_vec.emplace_back(mod);
+        }
+        // 范围for循环，更简洁
+        DWORD64 block_start = map.baddr;
+        DWORD64 block_end = map.eaddr;
+        // 跳过无效内存块
+        if (!Mem::is_valid(block_start, minAddr, maxAddr) ||
+            !Mem::is_valid(block_end, minAddr, maxAddr) ||
+            block_start >= block_end)
+        {
+            continue;
+        }
+        // std::cout << std::hex << "map:" << map.baddr << " " << map.eaddr << " " << map.flag << " " << map.infor << std::endl;
+        DWORD64 current_addr = block_start;
+        DWORD64 read_buffer[BLOCK_ENTRY_NUM] = {0}; // 内存读取缓冲区
+        while (current_addr < block_end)
+        {
+            // 计算本次读取的字节数（不超出内存块范围）
+            size_t remain_bytes = block_end - current_addr;
+            size_t read_size =
+                std::min(static_cast<size_t>(BLOCK_READ_SIZE), remain_bytes);
+            // 读取内存数据
+            int actual_read = Mem::mem_read(current_addr, read_buffer, read_size);
+            if (actual_read == -1 || actual_read < 8)
+            {
+                // 读取失败/不足1个条目
+                current_addr += read_size;
+                continue;
+            }
+            // 修正实际有效的条目数
+            int valid_entry_cnt = actual_read / 8;
+            if (valid_entry_cnt <= 0)
+            {
+                current_addr += read_size;
+                continue;
+            }
+            // 遍历读取结果，写入有效条目
+            for (int j = 0; j < valid_entry_cnt; ++j)
+            {
+                DWORD64 value = read_buffer[j];
+                DWORD64 entry_addr = current_addr + j * 8;
+                // 地址有效则直接写入文件
+                if (Mem::is_valid(value, minAddr, maxAddr))
+                {
+                    data.address = entry_addr;
+                    data.value = value;
+                    // 将数据写入临时文件（模拟原来的fwrite逻辑）
+                    fwrite(&data, sizeof(data), 1, f);
+                }
+            }
+            current_addr += read_size; // 移动到下一个读取地址
+        }
+    }
+    // // 将文件内容映射到pcoll
+    pcoll.shrink();
+    cache.shrink();
+    pcoll.map(f);
+    cache.reserve(pcoll.size());
+    // 输出静态内存块的数量和pcoll的数量
+    std::cout << "static memory blocks:" << memtool::extend::vm_static_list.size() << std::endl;
+    std::cout << "pcoll:" << pcoll.size() << std::endl;
+    fclose(f);
+    return pcoll.size();
 }
 
 /* this function compatible with bypassing page fault
@@ -166,7 +285,8 @@ size_t chainer::search<T>::get_pointers(T start, T end, bool rest, int count, in
     if (f == nullptr)
         return 0;
 
-    auto cat_file_list = [this, &f, &len, &buffer](auto &in) {
+    auto cat_file_list = [this, &f, &len, &buffer](auto &in)
+    {
         if (in == nullptr)
             return;
 
@@ -176,7 +296,8 @@ size_t chainer::search<T>::get_pointers(T start, T end, bool rest, int count, in
     }; // faster than sort i thought
 
     // memtool::base::open_target_pagemap();
-    auto ins = memtool::extend::for_each_memory_area<FILE *>(start, end, rest, count, size, [this](auto buffer, auto start, auto len, auto vma, auto &dat) { filter_pointer_to_fmmap(buffer, start, len, vma, dat); });
+    auto ins = memtool::extend::for_each_memory_area<FILE *>(start, end, rest, count, size, [this](auto buffer, auto start, auto len, auto vma, auto &dat)
+                                                             { filter_pointer_to_fmmap(buffer, start, len, vma, dat); });
     // memtool::base::close_target_pagemap();
 
     len = 1 << 20; // 1m
@@ -202,7 +323,8 @@ void chainer::search<T>::search_pointer(P &&input, U &out, size_t offset, bool r
     std::atomic<size_t> total(0);
     utils::list_head<pointer_pcount<T>> *head;
 
-    auto emplace_pointer = [this, &count, &out, &limit](auto n) {
+    auto emplace_pointer = [this, &count, &out, &limit](auto n)
+    {
         if (n->data.count == 0 || count >= limit)
             return;
 

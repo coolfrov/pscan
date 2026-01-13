@@ -95,13 +95,14 @@ void chainer::scan<T>::filter_pointer_ranges(std::vector<utils::mapqueue<chainer
     std::vector<pointer_data<T> *> nr;
 
     auto comp = [](auto x, auto y) { return x->address < y->address; };
-
+std::cout << memtool::extend::vm_static_list.size() << std::endl;
     for (auto vma : memtool::extend::vm_static_list) {
         if (vma->filter)
             continue;
 
         decltype(chainer::pointer_range<T>::results) asc;
         std::vector<pointer_data<T> *> results;
+        
         get_results(curr, results, vma->start, vma->end);
         if (results.empty())
             continue;
