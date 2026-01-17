@@ -95,8 +95,7 @@ void chainer::scan<T>::filter_pointer_ranges(std::vector<utils::mapqueue<chainer
     std::vector<pointer_data<T> *> nr;
 
     auto comp = [](auto x, auto y) { return x->address < y->address; };
-std::cout << memtool::extend::vm_static_list.size() << std::endl;
-    for (auto vma : memtool::extend::vm_static_list) {
+    for (auto vma : search<T>::vm_static_list) {
         if (vma->filter)
             continue;
 
@@ -113,7 +112,7 @@ std::cout << memtool::extend::vm_static_list.size() << std::endl;
             asc.emplace_back(p->address, p->value, 0, 1);
         }
 
-        printf("%s[%d]: %ld pointers\n", vma->name, vma->count, results.size());
+        // printf("%s[%d]: %ld pointers\n", vma->name, vma->count, results.size());
         ranges.emplace_back(level, vma, std::move(asc));
     }
 

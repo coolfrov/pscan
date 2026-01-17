@@ -27,7 +27,6 @@ LOCAL_MODULE := main
 LOCAL_C_INCLUDES := \
     $(LOCAL_PATH) \
     $(LOCAL_PATH)/chainer \
-    $(LOCAL_PATH)/memtool \
 	$(LOCAL_PATH)/utils/threadtool \
     $(LOCAL_PATH)/utils
 
@@ -38,8 +37,6 @@ LOCAL_SRC_FILES := \
 	chainer/ccscan.cpp \
 	utils/threadtool/threadpool.cpp \
 	utils/sutils.cpp \
-    memtool/membase.cpp \
-	memtool/memextend.cpp
 
 # 指定 C++ 标准为 C++17
 # 现代 C++ 特性（如模板、auto 等）需要此设置
@@ -52,6 +49,8 @@ LOCAL_CPP_STANDARD := c++11
 # 设置 C++ 编译器标志
 # -O2 for optimization, -Wall to show all warnings
 LOCAL_CPPFLAGS += -O2 -Wall
+# 设置不显示编译警告warning信息
+LOCAL_CFLAGS += -w
 
 # 将模块编译为可执行文件
 include $(BUILD_EXECUTABLE)

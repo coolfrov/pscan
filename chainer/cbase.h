@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <list>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,11 +12,39 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "memextend.h"
-
 #include "sutils.h"
 #include "mapqueue.h"
 #include "varray.h"
+
+// 2026年1月14日 move to here
+struct vm_area_data {
+    size_t start;
+    size_t end;
+    size_t offset;
+    size_t inode;
+    char name[128];
+    char dev[32];
+    int prot;
+    char perms[5];
+
+    int range;
+    void *user;
+
+    vm_area_data() : user(nullptr) {}
+};
+
+struct vm_static_data {
+    size_t start;
+    size_t end;
+    char name[128];
+    int range;
+    int count;
+    bool filter;
+
+    vm_static_data() : range(0), count(1), filter(false) {}
+    vm_static_data(size_t s, size_t e) : start(s), end(e), range(0), count(1), filter(false) {}
+    vm_static_data(size_t s, size_t e, int r) : start(s), end(e), range(r), count(1), filter(false) {}
+};
 
 namespace chainer
 {
@@ -52,12 +81,12 @@ struct pointer_dir {
 template <class T>
 struct pointer_range {
     int level;
-    memtool::vm_static_data *vma;
+    vm_static_data *vma;
     // std::vector<chainer::pointer_dir<T>> results;
     utils::mapqueue<chainer::pointer_dir<T>> results;
 
     pointer_range() {}
-    pointer_range(int lvl, memtool::vm_static_data *v, utils::mapqueue<chainer::pointer_dir<T>> &&r) : level(lvl), vma(v), results(std::move(r)) {}
+    pointer_range(int lvl, vm_static_data *v, utils::mapqueue<chainer::pointer_dir<T>> &&r) : level(lvl), vma(v), results(std::move(r)) {}
 };
 
 template <class T>

@@ -7,9 +7,7 @@
 #include "mapqueue.h"
 #include "sutils.h"
 #include "timer.h"
-
-#include "memextend.h"
-
+#include <map>
 #include "cbase.h"
 #include "csearch.h"
 

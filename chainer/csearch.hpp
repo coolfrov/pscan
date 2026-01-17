@@ -21,10 +21,8 @@ void chainer::search<T>::output_pointer_to_file(FILE *f, T *buffer, T start, siz
     size_t size;
     int lower, upper;
     pointer_data<T> data;
-
-    auto &avec = memtool::extend::vm_area_vec;
+    auto &avec = vm_area_vec;
     size = avec.size();
-    std::cout << vMaps.size() << std::endl;
     for (auto i = 0ul; i < maxn; ++i)
     {
         value = (*(buffer + i)) & 0xffffffffffff; // u can & 0xffffffffffff ......
@@ -44,7 +42,7 @@ void chainer::search<T>::output_pointer_to_file(FILE *f, T *buffer, T start, siz
 }
 
 template <class T>
-void chainer::search<T>::filter_pointer_to_fmmap(char *buffer, T start, size_t len, memtool::vm_area_data *vma, FILE *&f)
+void chainer::search<T>::filter_pointer_to_fmmap(char *buffer, T start, size_t len, vm_area_data *vma, FILE *&f)
 {
     T min, max, sub;
 
@@ -52,11 +50,11 @@ void chainer::search<T>::filter_pointer_to_fmmap(char *buffer, T start, size_t l
     if (f == nullptr)
         return;
 
-    min = memtool::extend::vm_area_vec.front()->start,
-    max = memtool::extend::vm_area_vec.back()->end;
+    min = vm_area_vec.front()->start,
+    max = vm_area_vec.back()->end;
     sub = max - min;
 
-    if (memtool::extend::readv(start, buffer, len) == -1)
+    if (Mem::mem_read(start, buffer, len) == -1)
     {
         fclose(f), f = nullptr;
         return;
@@ -67,34 +65,34 @@ void chainer::search<T>::filter_pointer_to_fmmap(char *buffer, T start, size_t l
     fflush(f);
 }
 
-template <class T>
-void chainer::search<T>::filter_pointer_to_fmmap_by_page(char *buffer, T start, size_t len, memtool::vm_area_data *vma, FILE *&f)
-{
-    size_t *dat;
-    T min, max, sub;
+// template <class T>
+// void chainer::search<T>::filter_pointer_to_fmmap_by_page(char *buffer, T start, size_t len, vm_area_data *vma, FILE *&f)
+// {
+//     size_t *dat;
+//     T min, max, sub;
 
-    f = tmpfile(); // wb+;
-    if (f == nullptr)
-        return;
+//     f = tmpfile(); // wb+;
+//     if (f == nullptr)
+//         return;
 
-    min = memtool::extend::vm_area_vec.front()->start,
-    max = memtool::extend::vm_area_vec.back()->end;
-    sub = max - min;
+//     min = vm_area_vec.front()->start,
+//     max = vm_area_vec.back()->end;
+//     sub = max - min;
 
-    auto out_pointers = [this, &f, buffer, min, sub](auto s, auto z)
-    {
-        if (memtool::extend::readv(s, buffer, z) == -1)
-            return;
+//     auto out_pointers = [this, &f, buffer, min, sub](auto s, auto z)
+//     {
+//         if (Mem::mem_read(s, buffer, z) == -1)
+//             return;
 
-        output_pointer_to_file(f, (T *)buffer, s, z / sizeof(T), min, sub);
-    };
+//         output_pointer_to_file(f, (T *)buffer, s, z / sizeof(T), min, sub);
+//     };
 
-    dat = memtool::base::check_physical_addr(start, len);
-    memtool::extend::check_page_fault(start, len, buffer, dat, out_pointers);
+//     dat = memtool::base::check_physical_addr(start, len);
+//     memtool::extend::check_page_fault(start, len, buffer, dat, out_pointers);
 
-    delete[] dat;
-    fflush(f);
-}
+//     delete[] dat;
+//     fflush(f);
+// }
 
 template <class T>
 template <typename P>
@@ -105,8 +103,8 @@ void chainer::search<T>::filter_pointer_from_fmmap(P &&input, chainer::pointer_d
     T min, max, sub, value;
     pointer_data<T> *data, **save;
 
-    min = memtool::extend::vm_area_vec.front()->start;
-    max = memtool::extend::vm_area_vec.back()->end;
+    min = vm_area_vec.front()->start;
+    max = vm_area_vec.back()->end;
     sub = max - min;
     size = input.size();
 
@@ -162,14 +160,15 @@ void chainer::search<T>::filter_pointer_to_block(P &&input, size_t offset, utils
 
 // 使用自定义vMaps和内存读取函数的get_pointers函数
 template <class T>
-size_t chainer::search<T>::custom_get_pointers(T start, T end, bool rest, int count, int size)
+size_t chainer::search<T>::custom_get_pointers(int p_pid, int mem_range)
 {
-    Mem::mem("com.LanPiaoPiao.PlantsVsZombiesRH");
+    // Mem::mem("com.LanPiaoPiao.PlantsVsZombiesRH");
+    pPid = p_pid;
     if (!Mem::isRunning())
     {
         return 0;
     }
-    Mem::SetMemRange(Mem::A | Mem::CD | Mem::CB | Mem::CA | Mem::JH);
+    Mem::SetMemRange(mem_range);
     if (vMaps.empty())
     {
         return 0;
@@ -187,23 +186,31 @@ size_t chainer::search<T>::custom_get_pointers(T start, T end, bool rest, int co
     chainer::pointer_data<T> data;
     data.address = 0;
     data.value = 0;
-    // 静态块数据
-    memtool::extend::vm_static_list.clear();
-    // 动态内存
-    memtool::extend::vm_area_vec.clear();
+    {
+        // 释放vm_static_list中的内存
+        for (auto* vma : vm_static_list) {
+            delete vma;
+        }
+        vm_static_list.clear();
+        // 释放vm_area_vec中的内存
+        for (auto* area : vm_area_vec) {
+            delete area;
+        }
+        vm_area_vec.clear();
+    }
     for (const auto &map : vMaps)
     {
         std::string infor = map.infor.substr(map.infor.find_last_of("/") + 1);
         if(infor.find("[anon:.bss]")!=-1 || infor.find(".so")!=-1){
-            auto mod = new memtool::vm_static_data(map.baddr, map.eaddr, 1);
+            auto mod = new vm_static_data(map.baddr, map.eaddr, 1);
             strcpy(mod->name, infor.c_str());
-            memtool::extend::vm_static_list.emplace_back(mod);
+            vm_static_list.emplace_back(mod);
         }else{
-            auto mod = new memtool::vm_area_data;
+            auto mod = new vm_area_data;
             mod->start = map.baddr;
             mod->end = map.eaddr;
             strcpy(mod->name, infor.c_str());
-            memtool::extend::vm_area_vec.emplace_back(mod);
+            vm_area_vec.emplace_back(mod);
         }
         // 范围for循环，更简洁
         DWORD64 block_start = map.baddr;
@@ -256,14 +263,15 @@ size_t chainer::search<T>::custom_get_pointers(T start, T end, bool rest, int co
             current_addr += read_size; // 移动到下一个读取地址
         }
     }
+    Mem::clear();
     // // 将文件内容映射到pcoll
     pcoll.shrink();
     cache.shrink();
     pcoll.map(f);
     cache.reserve(pcoll.size());
     // 输出静态内存块的数量和pcoll的数量
-    std::cout << "static memory blocks:" << memtool::extend::vm_static_list.size() << std::endl;
-    std::cout << "pcoll:" << pcoll.size() << std::endl;
+    //std::cout << "static memory blocks:" << vm_static_list.size() << std::endl;
+    //std::cout << "pcoll:" << pcoll.size() << std::endl;
     fclose(f);
     return pcoll.size();
 }
@@ -275,40 +283,40 @@ size_t chainer::search<T>::custom_get_pointers(T start, T end, bool rest, int co
 template <class T>
 size_t chainer::search<T>::get_pointers(T start, T end, bool rest, int count, int size)
 {
-    FILE *f;
-    uint32_t len;
-    char *buffer;
+    // FILE *f;
+    // uint32_t len;
+    // char *buffer;
 
-    cache.shrink();
-    pcoll.shrink();
-    f = tmpfile();
-    if (f == nullptr)
-        return 0;
+    // cache.shrink();
+    // pcoll.shrink();
+    // f = tmpfile();
+    // if (f == nullptr)
+    //     return 0;
 
-    auto cat_file_list = [this, &f, &len, &buffer](auto &in)
-    {
-        if (in == nullptr)
-            return;
+    // auto cat_file_list = [this, &f, &len, &buffer](auto &in)
+    // {
+    //     if (in == nullptr)
+    //         return;
 
-        rewind(in);
-        utils::cat_file_to_another(buffer, len, in, f);
-        fclose(in);
-    }; // faster than sort i thought
+    //     rewind(in);
+    //     utils::cat_file_to_another(buffer, len, in, f);
+    //     fclose(in);
+    // }; // faster than sort i thought
 
-    // memtool::base::open_target_pagemap();
-    auto ins = memtool::extend::for_each_memory_area<FILE *>(start, end, rest, count, size, [this](auto buffer, auto start, auto len, auto vma, auto &dat)
-                                                             { filter_pointer_to_fmmap(buffer, start, len, vma, dat); });
-    // memtool::base::close_target_pagemap();
+    // // memtool::base::open_target_pagemap();
+    // auto ins = memtool::extend::for_each_memory_area<FILE *>(start, end, rest, count, size, [this](auto buffer, auto start, auto len, auto vma, auto &dat)
+    //                                                          { filter_pointer_to_fmmap(buffer, start, len, vma, dat); });
+    // // memtool::base::close_target_pagemap();
 
-    len = 1 << 20; // 1m
-    buffer = new char[len];
-    for (auto &in : ins)
-        cat_file_list(in);
+    // len = 1 << 20; // 1m
+    // buffer = new char[len];
+    // for (auto &in : ins)
+    //     cat_file_list(in);
 
-    delete[] buffer;
+    // delete[] buffer;
 
-    pcoll.map(f);
-    cache.reserve(pcoll.size());
+    // pcoll.map(f);
+    // cache.reserve(pcoll.size());
     return pcoll.size();
 }
 

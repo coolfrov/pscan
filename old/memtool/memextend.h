@@ -60,9 +60,7 @@ private:
 public:
     static inline std::list<vm_area_data *> vm_area_list; // global
 
-    static inline std::vector<vm_area_data *> vm_area_vec; // set
-
-    static inline std::list<vm_static_data *> vm_static_list;
+    
 
     /*static inline auto vm_static_set = [](int n) {
 
